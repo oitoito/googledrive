@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityGoogleDrive;
 //using System.Diagnostics;
+using CSharpTree;
 
 public class TestFilesList : AdaptiveWindowGUI
 {
@@ -50,6 +51,7 @@ public class TestFilesList : AdaptiveWindowGUI
     private void ListFiles (string nextPageToken = null)
     {
         request = GoogleDriveFiles.List();
+        // description, iconLink, createdTime, sharedWithMeTime, sharingUser, owners, ownedByMe
         request.Fields = new List<string> { "nextPageToken, files(mimeType, id, name, kind, parents, hasThumbnail)" };
         request.PageSize = ResultsPerPage;
         if (!string.IsNullOrEmpty(query))
@@ -63,39 +65,81 @@ public class TestFilesList : AdaptiveWindowGUI
     {
         results = new Dictionary<string, string>();
 
+        var fi = string.Format(" ");
+
+        int count = 0;
         foreach (var file in fileList.Files)
         {
-            var fileInfo = string.Format("NAME: {0} \tTYPE: ", file.Name);
+            //var fileInfo = string.Format("NAME: {0} \tTYPE: ", file.Name);
+            fi += string.Format("\nNAME: {0} \tTYPE: ", file.Name);
 
             if(file.MimeType.Contains("folder"))
             {
-                fileInfo += string.Format("folder {0}", file.Id);
+                fi += string.Format("folder {0}", file.Id);
+
+                Debug.LogFormat("MIME: {0} ID: {1} NAME: {2} KIND: {3} PARENT: {4} THUMB: {5}", file.MimeType, file.Id, file.Name, file.Kind, file.Parents[0], file.HasThumbnail);
+                //fileInfo += string.Format("folder");
             }  
-        
-          /*  else if(file.MimeType.Contains("jpeg") || file.MimeType.Contains("png"))
+          
+           /* else if(file.MimeType.Contains("image"))
             {
-                fileInfo += "image";
+                 fileInfo += "image";
             }
-          */
+        */
+            else if(file.MimeType.Contains("jpeg") || file.MimeType.Contains("png"))
+            {
+                fi += "image";
+            }
 
             else if(file.MimeType.Contains("video"))
             {
-                fileInfo += "video";
+                fi += "video";
             }
 
-
-            else
+            else if(file.MimeType.Contains("pdf"))
             {
-                Debug.LogFormat("NONE OF THE ABOVE 0} {1}", file.Name, file.MimeType);
+                fi += "PDF";
             }
 
-            Debug.Log(fileInfo);
-            Debug.LogFormat("PARENTS {0} {1}", file.Parents.Count, file.Parents[0]);
+            else 
+            {
+                fi += file.MimeType;
+            }
 
-            results.Add(file.Id, fileInfo);
+            fi += string.Format("\tPARENT: {0}", file.Parents[0]);
+
+           count++;
+        }
+
+        Debug.LogFormat("COUNTED {0} items", count);
+
+        Debug.Log(fi);
+
+
+
+        Dictionary<string, UnityGoogleDrive.Data.File> id2File = new Dictionary<string, UnityGoogleDrive.Data.File>();
+        Dictionary<string, string> id2Parent = new Dictionary<string, string>();
+
+
+
+        foreach(var file in fileList.Files)
+        {
+            id2File.Add(file.Id, file);
+            id2Parent.Add(file.Id, file.Parents[0]);
         }
         
-        /*
+        UnityGoogleDrive.Data.File root = FindRoot(id2Parent);
+
+        List<string> inRoot = GetFilesInDirectory(root, id2Parent);
+
+        foreach(var _f in inRoot)
+        {
+           
+            Debug.LogFormat("In ROOT: {0}",  id2File[_f].Name);
+        }
+
+
+        
         foreach (var file in fileList.Files)
         {
             var fileInfo = string.Format("Name: {0} mime {1} thumbnail {2}",// parents {3}",
@@ -106,10 +150,44 @@ public class TestFilesList : AdaptiveWindowGUI
                 file.HasThumbnail);
              //   file.Parents[0]);
             results.Add(file.Id, fileInfo);
-        }
-        */
-        
+        }        
     }
+    
+    private List<string> GetFilesInDirectory(UnityGoogleDrive.Data.File directory, Dictionary<string, string> files)
+    {
+        List<string> inDirectory = new  List<string>();
+
+        foreach(var item in files)
+        {
+            // if parent is value then add to list of current
+            if(item.Value == directory.Id)
+            {
+                inDirectory.Add(item.Key);
+            }
+        } 
+
+        return inDirectory;
+    }
+
+    private UnityGoogleDrive.Data.File FindRoot(Dictionary<string, string> dict)
+    {
+        UnityGoogleDrive.Data.File root = new UnityGoogleDrive.Data.File();
+
+        root.MimeType   = "application/vnd.google-apps.folder";
+        root.Parents    = null;
+      
+        foreach(var item in dict)
+        {
+            if (!dict.ContainsKey(item.Value))
+            {
+                root.Id = item.Value;
+                break;
+            }
+        }
+    
+        return root;
+    }
+
 
     private bool NextPageExists ()
     {
