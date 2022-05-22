@@ -129,13 +129,32 @@ public class TestFilesList : AdaptiveWindowGUI
         }
         
         UnityGoogleDrive.Data.File root = FindRoot(id2Parent);
+        UnityGoogleDrive.Data.File dir = fileList.Files[0];
 
-        List<string> inRoot = GetFilesInDirectory(root, id2Parent);
+        foreach (var file in fileList.Files)
+        {
+            if(file.MimeType.Contains("folder"))
+                dir = file;
+                break;
+        }
 
-        foreach(var _f in inRoot)
+        // OnClickedIcon() //DoubleClicked
+        if(selectedFile.MimeType.Contains("folder"))
+        {
+            List<string> filesInDirectory = GetFilesInDirectory(dir, id2Parent);
+
+            DisplayFiles(filesInDirectory);
+        }
+
+        else
+        {
+            ShowItemInfo()
+        }
+
+        foreach(var _f in inDir)
         {
            
-            Debug.LogFormat("In ROOT: {0}",  id2File[_f].Name);
+            Debug.LogFormat("In {0}: {1}",  dir.Name, id2File[_f].Name);
         }
 
 
